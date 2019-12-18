@@ -7,12 +7,17 @@ from .models import Census
 from base import mods
 from base.tests import BaseTestCase
 
+from django.contrib.auth.models import User
+
 
 class CensusTestCase(BaseTestCase):
 
     def setUp(self):
         super().setUp()
-        self.census = Census(voting_id=1, voter_id=1)
+        u = User.objects.get(pk=1)
+        self.census = Census(voting_id=1)
+        self.census.save()
+        self.census.voter_id.add(u)
         self.census.save()
 
     def tearDown(self):
@@ -42,7 +47,8 @@ class CensusTestCase(BaseTestCase):
         self.assertEqual(response.json(), {'voters': [1]})
 
     def test_add_new_voters_conflict(self):
-        data = {'voting_id': 1, 'voters': [1]}
+        u = User.objects.get(pk=1)
+        data = {'voting_id': 1, 'voters': [u]}
         response = self.client.post('/census/', data, format='json')
         self.assertEqual(response.status_code, 401)
 
@@ -55,7 +61,9 @@ class CensusTestCase(BaseTestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_add_new_voters(self):
-        data = {'voting_id': 2, 'voters': [1,2,3,4]}
+        u1 = User.objects.get(pk=1)
+        u2 = User.objects.get(pk=2)
+        data = {'voting_id': 2, 'voters': [u1,u2]}
         response = self.client.post('/census/', data, format='json')
         self.assertEqual(response.status_code, 401)
 
@@ -69,7 +77,8 @@ class CensusTestCase(BaseTestCase):
         self.assertEqual(len(data.get('voters')), Census.objects.count() - 1)
 
     def test_destroy_voter(self):
-        data = {'voters': [1]}
+        u1 = User.objects.get(pk=1)
+        data = {'voters': [u1]}
         response = self.client.delete('/census/{}/'.format(1), data, format='json')
         self.assertEqual(response.status_code, 204)
         self.assertEqual(0, Census.objects.count())
